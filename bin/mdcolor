@@ -1,0 +1,73 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use feature qw(state);
+use File::Basename qw(basename);
+use Getopt::Long;
+our $PROGNAME = basename($0);
+
+our $VERSION = "0.000000";
+$VERSION = eval $VERSION;
+
+Getopt::Long::Configure(qw(gnu_getopt no_ignore_case auto_version auto_help));
+Getopt::Long::GetOptions(
+    'help|?'     => sub { usage(); exit(0); },
+) or die("Type '$PROGNAME --help' for help.\n");
+
+sub usage { print(<<"END"); }
+usage:
+    $PROGNAME [-?|--help] [-v|--version] [-n|--dry-run]
+END
+
+local $/ = undef;
+while (<>) {
+    print colorify($_);
+}
+
+our $ONE_STAR;
+our $TWO_STARS;
+our $THREE_STARS;
+our $ONE_UNDER;
+our $ONE_OCTOTHORPE;
+our $ONE_BACKTICK;
+BEGIN {
+    $ONE_STAR  = qr{(?<!\*)\*(?!\*)};
+    $TWO_STARS = qr{(?<!\*)\*\*(?!\*)};
+    $THREE_STARS = qr{(?<!\*)\*\*\*(?!\*)};
+    $ONE_UNDER = qr{(?<!_)_(?!_)};
+    $ONE_OCTOTHORPE = qr{(?<!\#)\#(?!\#)};
+    $ONE_BACKTICK = qr{(?<!\`)\`(?!\`)};
+}
+
+sub colorify {
+    my $str = join('', @_);
+    $str =~ s{(${ONE_BACKTICK})(.*?)(${ONE_BACKTICK})}
+             {$1 . green($2) . $3}sge;
+    $str =~ s{(${THREE_STARS})(.*?)(${THREE_STARS})}
+             {$1 . bold(italic($2)) . $3}ge;
+    $str =~ s{${TWO_STARS}(.*?)${TWO_STARS}}
+             {bold($1)}ge;
+    $str =~ s{${ONE_STAR}(.*?)${ONE_STAR}}
+             {green(italic($1))}ge;
+    $str =~ s{${ONE_UNDER}(.*?)${ONE_UNDER}}
+             {green(italic($1))}ge;
+    $str =~ s{^${ONE_OCTOTHORPE}.*$}
+             {bold($1)}ge;
+    return $str;
+}
+sub vt {
+    return join("", @_) if !-t 1;
+    return "\e[#{" . join("", @_) . "\e[#}";
+}
+sub bold {
+    return join("", @_) if !-t 1;
+    return vt("\e[1m" . join("", @_) . "\e[22m");
+}
+sub green {
+    return join("", @_) if !-t 1;
+    return vt("\e[32m" . join("", @_) . "\e[22m");
+}
+sub italic {
+    return join("", @_) if !-t 1;
+    return vt("\e[3m" . join("", @_) . "\e[23m");
+}
